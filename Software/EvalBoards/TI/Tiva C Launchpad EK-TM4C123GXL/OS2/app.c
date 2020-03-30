@@ -92,6 +92,8 @@
 static  OS_STK       AppTaskStartStk[APP_CFG_TASK_START_STK_SIZE];
 static  OS_STK       Task1Stk[APP_CFG_TASK_START_STK_SIZE];
 static  OS_STK       Task2Stk[APP_CFG_TASK_START_STK_SIZE];
+static  OS_STK       Task3Stk[APP_CFG_TASK_START_STK_SIZE];
+
 /*
 *********************************************************************************************************
 *                                            LOCAL MACRO'S
@@ -109,6 +111,7 @@ static  void  AppTaskCreate         (void);
 static  void  AppTaskStart          (void       *p_arg);
 static  void  Task1          (void       *p_arg);
 static  void  Task2          (void       *p_arg);
+static  void  Task3          (void       *p_arg);
 
 /*$PAGE*/
 /*
@@ -125,6 +128,8 @@ static  void  Task2          (void       *p_arg);
 *                   initialization.
 *********************************************************************************************************
 */
+OS_EVENT *UARTMutex;
+
 
 int  main (void)
 {
@@ -158,6 +163,8 @@ int  main (void)
 #if (OS_TASK_NAME_EN > 0)
     OSTaskNameSet(APP_CFG_TASK_START_PRIO, "Start", &err);
 #endif
+										
+		UARTMutex = OSMutexCreate(9,&err);
 
     OSStart();                                                  /* Start multitasking (i.e. give control to uC/OS-II)   */
 
@@ -254,38 +261,64 @@ static  void  AppTaskStart (void *p_arg)
 
 static  void  AppTaskCreate (void)
 {
-OSTaskCreate((void (*)(void *)) Task1,           /* Create the second task                                */
+OSTaskCreate((void (*)(void *)) Task1,           /* Create the first task                                */
                     (void           *) 0,							// argument
                     (OS_STK         *)&Task1Stk[APP_CFG_TASK_START_STK_SIZE - 1],
-                    (INT8U           ) 5 );  						// Task Priority
+                    (INT8U           ) 7 );  						// Task Priority
                 
 
 OSTaskCreate((void (*)(void *)) Task2,           /* Create the second task                                */
                     (void           *) 0,							// argument
                     (OS_STK         *)&Task2Stk[APP_CFG_TASK_START_STK_SIZE - 1],
                     (INT8U           ) 6 );  						// Task Priority
-         										
+									
+OSTaskCreate((void (*)(void *)) Task3,           // Create the third task                                
+                    (void           *) 0,							// argument
+                    (OS_STK         *)&Task3Stk[APP_CFG_TASK_START_STK_SIZE - 1],
+                    (INT8U           ) 5 );  						// Task Priority     										
 }
-
 
 static  void  Task1 (void *p_arg)
 {
+	  uint8_t err;
    (void)p_arg;
-	
     while (1) {              
         BSP_LED_Toggle(1);
-				UARTprintf("T1 ");	// Probably needs to be protected by semaphore
-        OSTimeDlyHMSM(0, 0, 0, 400);
+			  OSMutexPend(UARTMutex, 0, &err); // acquire lock for the uart
+				UARTprintf("T1234567891011121314\n");	// Probably needs to be protected by semaphore
+        OSMutexPost(UARTMutex); // release lock for the uart
+			  BSP_LED_Toggle(1);
+				OSTimeDlyHMSM(0, 0, 0, 2);
+				//OSTimeDly(2);
+
 			}
 }
 
 static  void  Task2 (void *p_arg)
 {
+	 uint8_t err;
    (void)p_arg;
-	
     while (1) {              
         BSP_LED_Toggle(2);
-  			UARTprintf("T2 ");  // Probably needs to be protected by semaphore
-        OSTimeDlyHMSM(0, 0, 0, 700);
+				OSMutexPend(UARTMutex, 0, &err); // acquire lock for the uart
+  			UARTprintf("TABCDEFGHIJKLMNOPQRSTUV\n");  // Probably needs to be protected by semaphore
+				OSMutexPost(UARTMutex); // release lock for the uart
+        BSP_LED_Toggle(2);
+			  OSTimeDlyHMSM(0, 0, 0, 2); // delay 1ms, without the mutex's this will make the UART's clash at 80MHz
+			  //OSTimeDly(2);
+			}
+}
+static  void  Task3 (void *p_arg)
+{
+	 uint8_t err;
+   (void)p_arg;
+    while (1) {              
+        BSP_LED_Toggle(0);
+				OSMutexPend(UARTMutex, 0, &err); // acquire lock for the uart
+  			UARTprintf("TTASK3TASK3TASK3TASK3\n");  // Probably needs to be protected by semaphore
+				OSMutexPost(UARTMutex); // release lock for the uart
+        BSP_LED_Toggle(0);
+			  OSTimeDlyHMSM(0, 0, 0, 2); // delay 1ms, without the mutex's this will make the UART's clash at 80MHz
+			  // OSTimeDly(2);
 			}
 }
