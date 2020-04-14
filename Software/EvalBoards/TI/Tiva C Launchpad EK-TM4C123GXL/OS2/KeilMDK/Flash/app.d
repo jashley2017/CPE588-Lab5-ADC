@@ -24,5 +24,6 @@
 .\flash\app.o: ..\..\BSP\driverlib/pin_map.h
 .\flash\app.o: ..\..\BSP\driverlib/sysctl.h
 .\flash\app.o: ..\..\BSP\driverlib/uart.h
+.\flash\app.o: ..\..\BSP\driverlib/adc.h
 .\flash\app.o: ..\..\BSP\utils/uartstdio.h
 .\flash\app.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h

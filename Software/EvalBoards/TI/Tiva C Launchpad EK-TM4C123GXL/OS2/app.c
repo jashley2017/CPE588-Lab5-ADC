@@ -59,6 +59,7 @@
 #include "driverlib/pin_map.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/uart.h"
+#include "driverlib/adc.h"
 #include "utils/uartstdio.h"
 
 /*
@@ -281,7 +282,50 @@ OSTaskCreate((void (*)(void *)) Task3,           // Create the third task
 static  void  Task1 (void *p_arg)
 {
 	  uint8_t err;
+		uint32_t ui32Value;
+	 // float voltage;
    (void)p_arg;
+		
+	//
+	// Enable the ADC0 module.
+	//
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);
+	//
+	// Wait for the ADC0 module to be ready.
+	//
+	while(!SysCtlPeripheralReady(SYSCTL_PERIPH_ADC0))
+	{
+	}
+	//
+	// Enable the first sample sequencer to capture the value of channel 0 when
+	// the processor trigger occurs.
+	//
+	ADCSequenceConfigure(ADC0_BASE, 0, ADC_TRIGGER_PROCESSOR, 0);
+	ADCSequenceStepConfigure(ADC0_BASE, 0, 0,
+	ADC_CTL_IE | ADC_CTL_END | ADC_CTL_CH0);
+	ADCSequenceEnable(ADC0_BASE, 0);
+	//
+	// Trigger the sample sequence.
+	//
+	
+	//
+	// Wait until the sample sequence has completed.
+	//
+	while(1) { 
+		ADCProcessorTrigger(ADC0_BASE, 0);
+		
+		while(!ADCIntStatus(ADC0_BASE, 0, false)){}
+		//
+		// Read the value from the ADC.
+		//
+		ADCSequenceDataGet(ADC0_BASE, 0, &ui32Value); // uint32_t
+		OSMutexPend(UARTMutex, 0, &err); // acquire lock for the uart
+		//voltage = ui32Value/4095;
+		UARTprintf("%u\n", ui32Value);
+		OSMutexPost(UARTMutex); // release lock for the uart
+			OSTimeDlyHMSM(0, 0, 0, 5);
+	}
+	/*
     while (1) {              
         BSP_LED_Toggle(1);
 			  OSMutexPend(UARTMutex, 0, &err); // acquire lock for the uart
@@ -292,6 +336,7 @@ static  void  Task1 (void *p_arg)
 				//OSTimeDly(2);
 
 			}
+*/
 }
 
 static  void  Task2 (void *p_arg)
